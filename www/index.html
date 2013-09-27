@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>IT-Enterprise</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" charset="utf-8">
+////////////////////////////////////////////////////////////////////////////////
+      // var
+      var pathIT = "IT",
+          fileITEnterpriseIni = "ITEnterprise.ini",
+          urlDef = "http://m.it.ua/mf/?phonegap=1",
+          urlITEnterprise = "",
+          failCB = function (msg) {
+            return function () {
+              alert('[FAIL] ' + msg);
+            }
+          },
+          file = {
+            writer: { available: false },
+            reader: { available: false }
+          };
+////////////////////////////////////////////////////////////////////////////////
+      // Wait for device API libraries to load
+      document.addEventListener("deviceready", onDeviceReady, false);
+      // device APIs are available
+      function onDeviceReady() {
+        checkConnection();
+      }
+      // Exit
+      function exitApp() {
+        navigator.app.exitApp(); 
+        navigator.device.exitApp();
+        navigator.app.backHistory();
+      }
+      // checkConnection
+      function checkConnection() {
+        var networkState = navigator.connection.type;
+        var states = {};
+        states[Connection.UNKNOWN]  = 'Unknown connection';
+        states[Connection.ETHERNET] = 'Ethernet connection';
+        states[Connection.WIFI]     = 'WiFi connection';
+        states[Connection.CELL_2G]  = 'Cell 2G connection';
+        states[Connection.CELL_3G]  = 'Cell 3G connection';
+        states[Connection.CELL_4G]  = 'Cell 4G connection';
+        states[Connection.CELL]     = 'Cell generic connection';
+        states[Connection.NONE]     = 'No network connection';
+        document.getElementById("masage").innerHTML = states[networkState];
+        if (networkState == Connection.NONE){
+          navigator.notification.alert(
+            'Отсутствует соединение с сетью!',// message
+            exitApp,                          // callback
+            'Внимание',                       // title
+            'Завершить'                       // buttonName
+          );
+        }
+        else {
+          if (localStorage.getItem('wasLoad') == undefined || localStorage.getItem('wasLoad') == '0') {
+            localStorage.setItem('wasLoad', '1');
+            runApp();
+          }
+          else {
+            localStorage.setItem('wasLoad', '0');
+            exitApp();
+          }              
+        }          
+      }
+////////////////////////////////////////////////////////////////////////////////
+      // runApp
+      function runApp() {
+        var fail = failCB('requestFileSystem');
+        window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, gotDirectory, fail);
+      }
+      // gotDirectory
+      function gotDirectory(fileSystem) {
+        var fail = failCB('getDirectory');
+        fileSystem.root.getDirectory(pathIT, {create: true, exclusive: false}, gotFile, fail);
+      }
+      // gotFile
+      function gotFile(directoryEntry) {
+        var fail = failCB('getFile');
+        directoryEntry.getFile(fileITEnterpriseIni, {create: true, exclusive: false}, gotFileEntry, fail);
+      }
+      // gotFileEntry
+      function gotFileEntry(fileEntry) {
+        var fail = failCB('createWriter');
+        file.entry = fileEntry;
+        fileEntry.createWriter(gotFileWriter, fail);
+        readText();
+      }
+      // gotFileWriter
+      function gotFileWriter(fileWriter) {
+        file.writer.available = true;
+        file.writer.object = fileWriter;
+      }
+      // readText
+      function readText() {
+        if (file.entry) {
+          file.entry.file(function (dbFile) {
+            var reader = new FileReader();
+            reader.onloadend = function (evt) {
+              if (evt.target.result == undefined || evt.target.result == "") {
+                urlITEnterprise = urlDef;
+              }
+              else {
+                urlITEnterprise = evt.target.result;
+              }
+              saveText();
+              window.location.href = urlITEnterprise;
+            }
+            reader.readAsText(dbFile);
+          }, failCB("FileReader"));
+        }
+      }
+      // saveText
+      function saveText(e) {
+        if (file.writer.available) {
+          file.writer.available = false;
+          file.writer.object.onwriteend = function (evt) {
+            file.writer.available = true;
+            file.writer.object.seek(0);
+          }
+          //file.writer.object.truncate(0);
+          file.writer.object.write(urlITEnterprise);
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div style="width: 200px; height: 60px; background: url('img/logo.png') no-repeat transparent; position:absolute; left: 50%; top: 45%; margin-left: -100px; margin-top: -20px;">
+    <img src="img/icon_loading.gif" style="padding: 40px 0 0 30px">
+    <div id="masage" style="padding:0; text-align: center"></div>
+    </div>   
+  </body>
+</html>
